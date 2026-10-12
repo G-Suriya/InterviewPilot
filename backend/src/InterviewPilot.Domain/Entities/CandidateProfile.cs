@@ -20,4 +20,6 @@ public class CandidateProfile
     public string ExcludedCompanies { get; set; } = string.Empty;
 
     public ICollection<CandidateSkill> Skills { get; set; } = new List<CandidateSkill>();
+    public ICollection<CandidateExperience> Experiences { get; set; } = new List<CandidateExperience>();
+    public ICollection<CandidateEducation> Education { get; set; } = new List<CandidateEducation>();
 }

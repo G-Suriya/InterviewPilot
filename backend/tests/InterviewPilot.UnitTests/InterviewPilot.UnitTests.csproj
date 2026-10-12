@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\InterviewPilot.Application\InterviewPilot.Application.csproj" />
     <ProjectReference Include="..\..\src\InterviewPilot.Domain\InterviewPilot.Domain.csproj" />
+    <ProjectReference Include="..\..\src\InterviewPilot.Infrastructure\InterviewPilot.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

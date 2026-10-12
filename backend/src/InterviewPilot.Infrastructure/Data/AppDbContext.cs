@@ -10,19 +10,25 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<CandidateProfile> CandidateProfiles => Set<CandidateProfile>();
+    public DbSet<CandidateExperience> CandidateExperiences => Set<CandidateExperience>();
+    public DbSet<CandidateEducation> CandidateEducations => Set<CandidateEducation>();
     public DbSet<Skill> Skills => Set<Skill>();
     public DbSet<CandidateSkill> CandidateSkills => Set<CandidateSkill>();
     public DbSet<Company> Companies => Set<Company>();
     public DbSet<Job> Jobs => Set<Job>();
     public DbSet<JobSkill> JobSkills => Set<JobSkill>();
+    public DbSet<SavedJob> SavedJobs => Set<SavedJob>();
     public DbSet<AppEntity> Applications => Set<AppEntity>();
     public DbSet<Resume> Resumes => Set<Resume>();
+    public DbSet<CandidateResumeChunk> ResumeChunks => Set<CandidateResumeChunk>();
+    public DbSet<InterviewSession> InterviewSessions => Set<InterviewSession>();
+    public DbSet<InterviewQuestion> InterviewQuestions => Set<InterviewQuestion>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // CandidateSkill relationships
         modelBuilder.Entity<CandidateSkill>()
             .HasOne(cs => cs.CandidateProfile)
             .WithMany(cp => cp.Skills)
@@ -33,7 +39,16 @@ public class AppDbContext : DbContext
             .WithMany(s => s.CandidateSkills)
             .HasForeignKey(cs => cs.SkillId);
 
-        // JobSkill relationships
+        modelBuilder.Entity<CandidateExperience>()
+            .HasOne(ce => ce.CandidateProfile)
+            .WithMany(cp => cp.Experiences)
+            .HasForeignKey(ce => ce.CandidateProfileId);
+
+        modelBuilder.Entity<CandidateEducation>()
+            .HasOne(ce => ce.CandidateProfile)
+            .WithMany(cp => cp.Education)
+            .HasForeignKey(ce => ce.CandidateProfileId);
+
         modelBuilder.Entity<JobSkill>()
             .HasOne(js => js.Job)
             .WithMany(j => j.Skills)
@@ -43,6 +58,16 @@ public class AppDbContext : DbContext
             .HasOne(js => js.Skill)
             .WithMany(s => s.JobSkills)
             .HasForeignKey(js => js.SkillId);
+
+        modelBuilder.Entity<SavedJob>()
+            .HasOne(sj => sj.Job)
+            .WithMany()
+            .HasForeignKey(sj => sj.JobId);
+
+        modelBuilder.Entity<InterviewQuestion>()
+            .HasOne(iq => iq.Session)
+            .WithMany(s => s.Questions)
+            .HasForeignKey(iq => iq.SessionId);
 
         // Seed Core Skills
         var netSkillId = Guid.Parse("11111111-1111-1111-1111-111111111111");

@@ -4,6 +4,7 @@ using InterviewPilot.Domain.Interfaces;
 using InterviewPilot.Infrastructure.Adapters;
 using InterviewPilot.Infrastructure.Data;
 using InterviewPilot.Infrastructure.Repositories;
+using InterviewPilot.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,11 +20,27 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlite(connectionString));
 
+        services.AddHttpClient();
+
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Adapters
-        services.AddScoped<IJobSourceAdapter, MockGreenhouseAdapter>();
+        services.AddScoped<IJobSourceAdapter, LiveGreenhouseAdapter>();
+        services.AddScoped<IJobSourceAdapter, LiveLeverAdapter>();
+
+        // Core Infrastructure & AI Services
+        services.AddScoped<IBlobStorageService, LocalStorageBlobService>();
+        services.AddScoped<IResumeParserService, RegexResumeParserService>();
+        services.AddScoped<IJobDeduplicationService, JobDeduplicationService>();
+        services.AddScoped<IJobNormalizer, JobNormalizer>();
+        services.AddScoped<IAzureOpenAiService, MockAzureOpenAiService>();
+        services.AddScoped<ICandidateRagService, CandidateRagService>();
+        services.AddScoped<IApplicationAssistantService, ApplicationAssistantService>();
+        services.AddScoped<IAtsDetectionService, AtsDetectionService>();
+        services.AddScoped<IInterviewPrepService, InterviewPrepService>();
+        services.AddScoped<IAnalyticsService, AnalyticsService>();
+        services.AddScoped<INotificationService, NotificationService>();
 
         // Application Services
         services.AddScoped<IJobService, JobService>();

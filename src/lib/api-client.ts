@@ -2,7 +2,7 @@
 
 export const API_BASE_URL =
   (typeof process !== "undefined" && process.env?.VITE_API_URL) ||
-  "http://localhost:5000/api";
+  "http://localhost:5055/api";
 
 export type ApiJob = {
   id: string;
@@ -48,7 +48,7 @@ export type ApplicationItem = {
   jobId: string;
   jobTitle: string;
   companyName: string;
-  status: number; // 0=New, 1=Shortlisted, 2=ApplicationReady, 3=Applied, 4=Assessment, 5=Interview, 6=Offer, etc.
+  status: number;
   matchScore?: number | null;
   applicationMethod: number;
   externalApplicationId?: string | null;
@@ -76,6 +76,61 @@ export type MatchResult = {
   };
 };
 
+export type TailoredResume = {
+  jobId: string;
+  jobTitle: string;
+  companyName: string;
+  tailoredProfessionalSummary: string;
+  highlightedKeySkills: string[];
+  experienceBullets: { company: string; role: string; optimizedBullets: string[] }[];
+  predictedAtsScore: number;
+};
+
+export type CoverLetter = {
+  jobId: string;
+  jobTitle: string;
+  companyName: string;
+  tone: string;
+  fullCoverLetter: string;
+};
+
+export type InterviewSession = {
+  sessionId: string;
+  jobId: string;
+  roleTitle: string;
+  companyName: string;
+  readinessScore: number;
+  feedbackSummary: string;
+  questions: {
+    questionId: string;
+    questionText: string;
+    category: string;
+    modelStarAnswer?: string;
+  }[];
+};
+
+export type AnswerEvaluation = {
+  questionId: string;
+  score: number;
+  feedback: string;
+  strengths: string;
+  areasOfImprovement: string;
+  modelAnswerRecommendation: string;
+};
+
+export type CandidateAnalytics = {
+  totalApplications: number;
+  shortlistedCount: number;
+  applicationsReadyCount: number;
+  appliedCount: number;
+  interviewsCount: number;
+  offersCount: number;
+  responseRatePercentage: number;
+  interviewRatePercentage: number;
+  averageMatchScore: number;
+  mostDemandedSkills: { skillName: string; jobCount: number }[];
+};
+
 export const api = {
   async getJobs(params?: {
     role?: string;
@@ -94,15 +149,19 @@ export const api = {
     return res.json();
   },
 
-  async getJobById(id: string): Promise<ApiJob> {
-    const res = await fetch(`${API_BASE_URL}/jobs/${id}`);
+  async syncJobs(): Promise<{ newJobsIngested: number; duplicatesSkipped: number }> {
+    const res = await fetch(`${API_BASE_URL}/jobs/sync`, { method: "POST" });
     if (!res.ok) throw new Error(`API error: ${res.statusText}`);
     return res.json();
   },
 
-  async syncJobs(source = "Greenhouse"): Promise<{ source: string; newJobsIngested: number }> {
-    const res = await fetch(`${API_BASE_URL}/jobs/sync?source=${source}`, { method: "POST" });
-    if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+  async saveJob(jobId: string): Promise<void> {
+    await fetch(`${API_BASE_URL}/jobs/${jobId}/save`, { method: "POST" });
+  },
+
+  async getSavedJobs(): Promise<ApiJob[]> {
+    const res = await fetch(`${API_BASE_URL}/jobs/saved`);
+    if (!res.ok) return [];
     return res.json();
   },
 
@@ -120,6 +179,46 @@ export const api = {
     });
     if (!res.ok) throw new Error(`API error: ${res.statusText}`);
     return res.json();
+  },
+
+  async uploadResume(file: File): Promise<any> {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API_BASE_URL}/profile/resume`, {
+      method: "POST",
+      body: form,
+    });
+    if (!res.ok) throw new Error(`Upload error: ${res.statusText}`);
+    return res.json();
+  },
+
+  async evaluateMatch(jobId: string): Promise<MatchResult> {
+    const res = await fetch(`${API_BASE_URL}/matching/evaluate/${jobId}`, { method: "POST" });
+    if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+    return res.json();
+  },
+
+  async tailorResume(jobId: string): Promise<TailoredResume> {
+    const res = await fetch(`${API_BASE_URL}/ai/resume-tailor?jobId=${jobId}`, { method: "POST" });
+    if (!res.ok) throw new Error(`Tailor error: ${res.statusText}`);
+    return res.json();
+  },
+
+  async generateCoverLetter(jobId: string, tone = "Professional"): Promise<CoverLetter> {
+    const res = await fetch(`${API_BASE_URL}/ai/cover-letter?jobId=${jobId}&tone=${tone}`, { method: "POST" });
+    if (!res.ok) throw new Error(`Cover letter error: ${res.statusText}`);
+    return res.json();
+  },
+
+  async answerQuestion(jobId: string, question: string): Promise<string> {
+    const res = await fetch(`${API_BASE_URL}/ai/application-answer?jobId=${jobId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }),
+    });
+    if (!res.ok) throw new Error(`Answer error: ${res.statusText}`);
+    const data = await res.json();
+    return data.suggestedAnswer;
   },
 
   async getApplications(status?: number): Promise<ApplicationItem[]> {
@@ -145,9 +244,32 @@ export const api = {
     return res.json();
   },
 
-  async evaluateMatch(jobId: string): Promise<MatchResult> {
-    const res = await fetch(`${API_BASE_URL}/matching/evaluate/${jobId}`, { method: "POST" });
-    if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+  async detectAts(careerUrl: string): Promise<string> {
+    const res = await fetch(`${API_BASE_URL}/companies/detect-ats?careerUrl=${encodeURIComponent(careerUrl)}`, { method: "POST" });
+    if (!res.ok) return "Unknown";
+    const data = await res.json();
+    return data.atsProvider;
+  },
+
+  async generateMockInterview(jobId: string): Promise<InterviewSession> {
+    const res = await fetch(`${API_BASE_URL}/interview/generate/${jobId}`, { method: "POST" });
+    if (!res.ok) throw new Error(`Interview error: ${res.statusText}`);
+    return res.json();
+  },
+
+  async evaluateAnswer(questionId: string, answer: string): Promise<AnswerEvaluation> {
+    const res = await fetch(`${API_BASE_URL}/interview/evaluate/${questionId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ candidateAnswer: answer }),
+    });
+    if (!res.ok) throw new Error(`Evaluation error: ${res.statusText}`);
+    return res.json();
+  },
+
+  async getAnalytics(): Promise<CandidateAnalytics> {
+    const res = await fetch(`${API_BASE_URL}/analytics`);
+    if (!res.ok) throw new Error(`Analytics error: ${res.statusText}`);
     return res.json();
   },
 };
