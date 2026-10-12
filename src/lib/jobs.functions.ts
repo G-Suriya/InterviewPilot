@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { api } from "./api-client";
 
 export type Job = {
   id: string;
@@ -76,6 +77,33 @@ async function lever(co: string): Promise<Job[]> {
 
 export const fetchJobs = createServerFn({ method: "GET" }).handler(async () => {
   const tasks = [remotive(), arbeitnow(), remoteok(), ...GREENHOUSE.map(greenhouse), ...LEVER.map(lever)];
+
+  // Also query .NET Web API if running
+  try {
+    const apiJobs = await api.getJobs({ page: 1 });
+    if (apiJobs && apiJobs.length > 0) {
+      const mappedApiJobs: Job[] = apiJobs.map((j) => ({
+        id: j.id,
+        role: j.title,
+        co: j.companyName,
+        location: j.location || "Remote",
+        salary: j.salaryMax ? Math.round(j.salaryMax / 1000) : 0,
+        remote: j.isRemote,
+        url: j.applicationUrl || "#",
+        source: `${j.source} (.NET Core)`,
+      }));
+      // Put backend database jobs first
+      const results = await Promise.allSettled(tasks);
+      const publicJobs: Job[] = [];
+      results.forEach((r) => {
+        if (r.status === "fulfilled") publicJobs.push(...r.value);
+      });
+      return { jobs: [...mappedApiJobs, ...publicJobs], failedCount: 0, fetchedAt: new Date().toISOString() };
+    }
+  } catch {
+    // Backend API is not active; seamlessly use direct feed ingestion
+  }
+
   const results = await Promise.allSettled(tasks);
   const jobs: Job[] = [];
   const failed: string[] = [];

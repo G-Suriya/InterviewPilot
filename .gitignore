@@ -7,6 +7,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Node / Web
 node_modules
 dist
 dist-ssr
@@ -15,6 +16,14 @@ dist-ssr
 .tanstack/**
 .nitro
 *.local
+
+# .NET
+[Bb]in/
+[Oo]bj/
+*.db
+*.db-shm
+*.db-wal
+.vs/
 
 # Wrangler / Cloudflare
 .wrangler/
@@ -28,5 +37,4 @@ dist-ssr
 *.suo
 *.ntvs*
 *.njsproj
-*.sln
 *.sw?
